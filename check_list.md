@@ -37,4 +37,4 @@
 | **R02** | ≥ 30 % of references from last **5 years**     | < 30 % ⇒ *Warn*                            |
 | **R03** | ≤ 20 % arXiv / non‑peer‑reviewed               | > 20 % ⇒ *Warn*                            |
 | **R04** | Avoid bulk citations (“…[1–6]”) w/o commentary | ≥ 2 bulk strings ⇒ *Warn*                  |
-| **R05** | Cite ≥ 3 recent pattern‑recognition papers     | < 3 ⇒ *Warn*                               |
+| **R05** | Cite ≥ 3 recent papers on general topic of pattern recognition (PR, PAMI, CVPR, ICPR, etc)     | < 3 ⇒ *Warn*                               |
