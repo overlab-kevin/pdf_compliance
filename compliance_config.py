@@ -182,7 +182,7 @@ CRITERIA: List[Criterion] = [
         severity="warning",
         extractor="fonts.fontsize.smalltext_pt",
         target=8,
-        tolerance=1,
+        tolerance=0,
         units="pt",
     ),
 
