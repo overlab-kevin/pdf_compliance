@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""evaluate_pdf.py
+"""evaluate_pdf.py – PDF format‑compliance CLI.
 
-CLI driver that reads **compliance_config.py** and evaluates whatever
-extractors are implemented.  Rules whose extractor cannot yet be resolved
-print *[NOT IMPLEMENTED]* instead of crashing.
+* Loads criteria from ``compliance_config.py``
+* Resolves dotted extractor paths such as
+  ``geometry.page_metrics.top_margin_cm``
+* Evaluates **Quantitative**, **Existential**, and **Structural** rules.
 
-Example
--------
-$ python evaluate_pdf.py submission.pdf
-$ python evaluate_pdf.py submission.pdf --output json
-
-The script currently supports **Quantitative** and **Existential** rules out
-of the box.  Categorical / Structural / Qualitative evaluations will be
-marked *SKIPPED* until their extractors are added.
+Usage
+-----
+$ python evaluate_pdf.py sample.pdf            # pretty text
+$ python evaluate_pdf.py sample.pdf --output json
 """
 
 from __future__ import annotations
@@ -22,164 +19,146 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
-from typing import Any, Dict, Tuple
-
-import sys
-# add this block ↓
-PROJECT_ROOT = Path(__file__).resolve().parent
-SRC_PATH = PROJECT_ROOT / "src"
-sys.path.insert(0, str(SRC_PATH))
-
+from typing import Any, Dict, Sequence, Tuple
 
 from compliance_config import (
     CRITERIA,
     QuantitativeCriterion,
     ExistentialCriterion,
-    CategoricalCriterion,
     StructuralCriterion,
+    CategoricalCriterion,
     QualitativeCriterion,
 )
 
 # -----------------------------------------------------------------------------
-#  Extractor resolver
+#  Make src/ importable --------------------------------------------------------
+# -----------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+# -----------------------------------------------------------------------------
+#  Extractor resolver ----------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-def _resolve_extractor(path: str) -> Tuple[bool, Any, str]:
-    """Return (implemented, callable_or_value, message)."""
-    parts = path.split(".")
+def _execute_extractor(pdf_path: str, dotted_path: str) -> Tuple[bool, Any]:
+    """Return ``(success, value_or_msg)``.
+
+    *success* is False when the module, attribute, or call fails.
+    Example dotted path: ``geometry.page_metrics.left_margin_cm``
+    """
+    parts: Sequence[str] = dotted_path.split(".")
     if not parts:
-        return False, None, "empty extractor path"
+        return False, "empty extractor path"
 
-    # Step 1: import the base module (could be nested, e.g. a.b.c)
-    for i in range(len(parts), 0, -1):
-        module_name = ".".join(parts[:i])
-        try:
-            module = importlib.import_module(module_name)
-        except ModuleNotFoundError:
-            continue
-        attr_chain = parts[i:]
-        break
-    else:
-        return False, None, f"module not found in path '{path}'"
-
-    obj: Any = module
-    for idx, attr in enumerate(attr_chain):
-        if callable(obj):
-            # call the function now; remaining attrs will deref on its return
-            obj = obj
-            remaining_attrs = attr_chain[idx:]
-            break
-        if not hasattr(obj, attr):
-            return False, None, f"attribute '{attr}' missing in '{'.'.join(parts[:i+idx])}'"
-        obj = getattr(obj, attr)
-    else:
-        remaining_attrs = []
-
-    return True, (obj, remaining_attrs), ""
-
-
-def _execute_extractor(pdf_path: str, extractor_path: str):
-    ok, payload, msg = _resolve_extractor(extractor_path)
-    if not ok:
-        return None, msg
-
-    obj, tail_attrs = payload  # obj is module / func / value
-
-    # If obj is callable ⇒ call with pdf_path
+    # Import base module --------------------------------------------------
     try:
-        if callable(obj):
-            result = obj(pdf_path)
+        obj: Any = importlib.import_module(parts[0])
+    except ModuleNotFoundError as exc:
+        return False, f"module import error: {exc}"
+
+    called_first_callable = False
+
+    # Walk remaining attributes/keys -------------------------------------
+    for attr in parts[1:]:
+        # Call the first callable with the PDF path
+        if callable(obj) and not called_first_callable:
+            try:
+                obj = obj(pdf_path)
+            except Exception as exc:
+                return False, f"call error: {exc}"
+            called_first_callable = True
+        # Dereference attr / key
+        if isinstance(obj, dict) and attr in obj:
+            obj = obj[attr]
+        elif hasattr(obj, attr):
+            obj = getattr(obj, attr)
         else:
-            result = obj
-        # Drill down remainder of attribute/keys
-        for attr in tail_attrs:
-            # support dict keys first
-            if isinstance(result, dict) and attr in result:
-                result = result[attr]
-            elif hasattr(result, attr):
-                result = getattr(result, attr)
-            else:
-                return None, f"key/attr '{attr}' not found in extractor result"
-        return result, ""
-    except Exception as exc:
-        return None, f"runtime error: {exc}"
+            return False, f"attribute/key '{attr}' missing"
+
+    # If we never called a callable (path ends right after function)
+    if callable(obj) and not called_first_callable:
+        try:
+            obj = obj(pdf_path)
+        except Exception as exc:
+            return False, f"call error: {exc}"
+
+    return True, obj
 
 # -----------------------------------------------------------------------------
-#  Rule evaluators for implemented types
+#  Evaluators ------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-def _evaluate_quantitative(rule: QuantitativeCriterion, value: Any):
+def _eval_quant(rule: QuantitativeCriterion, val: Any):
     try:
-        val = float(value)
+        v = float(val)
     except Exception:
-        return False, f"non-numeric value ({value})"
-
+        return False, f"non‑numeric ({val})"
     if rule.target is not None and rule.tolerance is not None:
-        return abs(val - rule.target) <= rule.tolerance, val
+        return abs(v - rule.target) <= rule.tolerance, v
     if rule.min_value is not None and rule.max_value is not None:
-        return rule.min_value <= val <= rule.max_value, val
+        return rule.min_value <= v <= rule.max_value, v
     if rule.min_value is not None:
-        return val >= rule.min_value, val
+        return v >= rule.min_value, v
     if rule.max_value is not None:
-        return val <= rule.max_value, val
-    return True, val  # nothing to compare
+        return v <= rule.max_value, v
+    return True, v
 
 
-def _evaluate_existential(rule: ExistentialCriterion, value: Any):
-    return bool(value) is rule.must_be_true, value
+def _eval_boolean(val: Any):
+    return bool(val) is True, val
 
 # -----------------------------------------------------------------------------
-#  CLI
+#  Core runner -----------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
 def run(pdf_path: str) -> Dict[str, Dict[str, Any]]:
     report: Dict[str, Dict[str, Any]] = {}
 
     for rule in CRITERIA:
-        # Attempt to execute extractor -----------------------------------
-        if not rule.extractor:
-            report[rule.id] = {"status": "skipped", "reason": "no extractor path"}
+        success, value_or_msg = _execute_extractor(pdf_path, rule.extractor) if rule.extractor else (False, "no extractor path")
+        if not success:
+            report[rule.id] = {"status": "skipped", "reason": value_or_msg}
             continue
-        val, err = _execute_extractor(pdf_path, rule.extractor)
-        if err:
-            report[rule.id] = {"status": "skipped", "reason": err}
-            continue
+        val = value_or_msg
 
-        # Evaluate according to rule type --------------------------------
+        # Dispatch --------------------------------------------------------
         if isinstance(rule, QuantitativeCriterion):
-            passed, detail = _evaluate_quantitative(rule, val)
-        elif isinstance(rule, ExistentialCriterion):
-            passed, detail = _evaluate_existential(rule, val)
+            passed, detail = _eval_quant(rule, val)
+        elif isinstance(rule, (ExistentialCriterion, StructuralCriterion)):
+            passed, detail = _eval_boolean(val)
         else:
-            report[rule.id] = {"status": "skipped", "reason": f"{type(rule).__name__} not yet supported"}
+            report[rule.id] = {"status": "skipped", "reason": f"{type(rule).__name__} not supported"}
             continue
 
-        status = "ok" if passed else rule.severity
-        report[rule.id] = {"status": status, "value": detail}
+        report[rule.id] = {
+            "status": "ok" if passed else rule.severity,
+            "value": detail,
+        }
 
     return report
 
+# -----------------------------------------------------------------------------
+#  CLI -------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="PDF compliance checker")
-    parser.add_argument("pdf", type=Path, help="Path to PDF")
+    parser.add_argument("pdf", type=Path)
     parser.add_argument("--output", choices=["text", "json"], default="text")
     args = parser.parse_args(argv)
 
     if not args.pdf.exists():
-        sys.exit(f"File not found: {args.pdf}")
+        sys.exit("file not found")
 
     results = run(str(args.pdf))
 
     if args.output == "json":
-        print(json.dumps(results, indent=2))
+        print(json.dumps(results, indent=2, ensure_ascii=False))
         return
 
     # Pretty text ---------------------------------------------------------
     for rid, res in results.items():
-        status = res.get("status", "?")
-        print(f"[{rid:5}] {status}")
+        print(f"[{rid:5}] {res['status']}")
         if "value" in res:
             print("    value :", res["value"])
         if "reason" in res:
