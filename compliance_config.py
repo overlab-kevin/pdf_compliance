@@ -82,7 +82,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L02T",
         description="Top margin exactly 4.3 cm ±0.2 cm",
-        severity="warning",
+        severity="error",
         extractor="geometry.page_metrics.top_margin_cm",
         target=4.3,
         tolerance=0.2,
@@ -91,7 +91,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L02B",
         description="Bottom margin exactly 4.3 cm ±0.2 cm",
-        severity="warning",
+        severity="error",
         extractor="geometry.page_metrics.bottom_margin_cm",
         target=4.3,
         tolerance=0.2,
@@ -100,7 +100,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L02L",
         description="Left margin exactly 4.8 cm ±0.2 cm",
-        severity="warning",
+        severity="error",
         extractor="geometry.page_metrics.left_margin_cm",
         target=4.8,
         tolerance=0.2,
@@ -109,7 +109,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L02R",
         description="Right margin exactly 4.8 cm ±0.2 cm",
-        severity="warning",
+        severity="error",
         extractor="geometry.page_metrics.right_margin_cm",
         target=4.8,
         tolerance=0.2,
@@ -125,7 +125,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L04",
         description="Manuscript length 20–35 pages (≤40 for review)",
-        severity="warning",
+        severity="error",
         extractor="structure.page_count",
         min_value=20,
         max_value=35,
@@ -141,7 +141,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="L06",
         description="Footnote baseline 2.6 cm from bottom",
-        severity="warning",
+        severity="error",
         extractor="geometry.page_metrics.footnote_baseline_cm",
         target=2.6,
         tolerance=0.2,
@@ -161,7 +161,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="T02_title",
         description="Title font size 14 pt ±1 pt",
-        severity="warning",
+        severity="error",
         extractor="fonts.fontsize.title_pt",
         target=14,
         tolerance=0,
@@ -170,7 +170,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="T02_body",
         description="Body text 10 pt ±1 pt",
-        severity="warning",
+        severity="error",
         extractor="fonts.fontsize.body_pt",
         target=10,
         tolerance=0,
@@ -179,7 +179,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="T02_captions",
         description="Captions / footnotes / affiliations 8 pt ±1 pt",
-        severity="warning",
+        severity="error",
         extractor="fonts.fontsize.smalltext_pt",
         target=8,
         tolerance=0,
@@ -198,7 +198,7 @@ CRITERIA: List[Criterion] = [
     QualitativeCriterion(
         id="S01",
         description="Title ≤15 words, grammatical, no unexplained abbreviations",
-        severity="warning",
+        severity="error",
         extractor="structure.title_text",
         prompt_template="prompts/title_check.jinja2",
     ),
@@ -213,26 +213,26 @@ CRITERIA: List[Criterion] = [
     QualitativeCriterion(
         id="S03",
         description="Conclusions present, distinct from abstract, cover key points",
-        severity="warning",
+        severity="error",
         extractor="structure.conclusions_vs_abstract",
         prompt_template="prompts/conclusions_check.jinja2",
     ),
     ExistentialCriterion(
         id="S04",
         description="Highlights file present (3–5 bullets, ≤85 chars each)",
-        severity="warning",
+        severity="error",
         extractor="structure.highlights_ok",
     ),
     ExistentialCriterion(
         id="S05",
         description="CRediT author‑contribution statement present",
-        severity="warning",
+        severity="error",
         extractor="structure.has_credit_statement",
     ),
     ExistentialCriterion(
         id="S06",
         description="Generative‑AI use declaration present if AI mentioned",
-        severity="warning",
+        severity="error",
         extractor="structure.ai_use_statement",
     ),
     QuantitativeCriterion(
@@ -250,8 +250,8 @@ CRITERIA: List[Criterion] = [
     # ------------------------------------------------------------------
     QuantitativeCriterion(
         id="R01",
-        description="Total references 35–55 (warn if review >55 but ≤120)",
-        severity="warning",
+        description="Total references 35–55",
+        severity="error",
         extractor="references.count",
         min_value=35,
         max_value=55,
@@ -260,7 +260,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="R02",
         description="≥30 % references from last 5 years",
-        severity="warning",
+        severity="error",
         extractor="references.share_recent_pct",
         min_value=30,
         units="percent",
@@ -268,7 +268,7 @@ CRITERIA: List[Criterion] = [
     QuantitativeCriterion(
         id="R03",
         description="≤20 % arXiv / non‑peer‑reviewed",
-        severity="warning",
+        severity="error",
         extractor="references.share_preprint_pct",
         max_value=20,
         units="percent",
@@ -276,14 +276,14 @@ CRITERIA: List[Criterion] = [
     StructuralCriterion(
         id="R04",
         description="Bulk citation ranges must include commentary",
-        severity="warning",
+        severity="error",
         extractor="references.bulk_citation_commentary",
         expected_structure="commentary_present",
     ),
     QuantitativeCriterion(
         id="R05",
         description="Cite ≥3 recent Pattern‑Recognition papers",
-        severity="warning",
+        severity="error",
         extractor="references.count_pattern_recognition",
         min_value=3,
         units="papers",

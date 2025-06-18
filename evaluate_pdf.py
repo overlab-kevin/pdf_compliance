@@ -25,6 +25,13 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Tuple
 
+import sys
+# add this block ↓
+PROJECT_ROOT = Path(__file__).resolve().parent
+SRC_PATH = PROJECT_ROOT / "src"
+sys.path.insert(0, str(SRC_PATH))
+
+
 from compliance_config import (
     CRITERIA,
     QuantitativeCriterion,
