@@ -3,7 +3,7 @@
 | ID      | Requirement                                                                                     | Fail threshold                           |
 | ------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | **L01** | Paper size **Letter 8.5 × 11 in**                                                               | Any other size                           |
-| **L02** | Margins exactly **Top 4.3 cm, Bottom 4.3 cm, Left 4.8 cm, Right 4.8 cm**                        | Deviates > 2 mm                          |
+| **L02** | Margins exactly **Top 4.3 cm, Bottom 4.3 cm, Left 4.8 cm, Right 4.8 cm**. Note these are very large, approximately 44% of the page width.                     | Deviates > 2 mm                          |
 | **L03** | **Single column, double‑spaced** throughout                                                     | Multicolumn anywhere; line spacing < 1.5 |
 | **L04** | Manuscript length **20–35 pages** (≤ 40 for a review) — *exclude cover‑letter / response pages* | Outside limits                           |
 | **L05** | All manuscript pages numbered consecutively                                                     | Missing or non‑consecutive numbers       |
@@ -28,6 +28,7 @@
 | **S05** | **CRediT author‑contribution statement** present                                                               | Missing                                |
 | **S06** | **Declaration of generative‑AI use** present if any AI tools mentioned                                         | AI usage evident but statement missing |
 | **S07** | **Keywords section** present with 1–7 English keywords                                                         | Missing or > 7 keywords                |
+| **S08** | **Relevancy** Provide a score between 0-100 on how relevant the paper is to the Pattern Recognition journal                                                         | Score < 30                |
 
 ### 2.4 References & citations
 
@@ -37,4 +38,4 @@
 | **R02** | ≥ 30 % of references from last **5 years**     | < 30 % ⇒ *Warn*                            |
 | **R03** | ≤ 20 % arXiv / non‑peer‑reviewed               | > 20 % ⇒ *Warn*                            |
 | **R04** | Avoid bulk citations (“…[1–6]”) w/o commentary | ≥ 2 bulk strings ⇒ *Warn*                  |
-| **R05** | Cite ≥ 3 recent pattern‑recognition papers     | < 3 ⇒ *Warn*                               |
+| **R05** | Cite ≥ 3 recent (within previous year) papers on general topic of pattern recognition (PR, PAMI, CVPR, ICPR, etc)     | < 3 ⇒ *Warn*                               |
