@@ -3,7 +3,7 @@
 | ID      | Requirement                                                                                     | Fail threshold                           |
 | ------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | **L01** | Paper size **Letter 8.5 × 11 in**                                                               | Any other size                           |
-| **L02** | Margins exactly **Top 4.3 cm, Bottom 4.3 cm, Left 4.8 cm, Right 4.8 cm**                        | Deviates > 2 mm                          |
+| **L02** | Margins exactly **Top 4.3 cm, Bottom 4.3 cm, Left 4.8 cm, Right 4.8 cm**. Note these are very large, approximately 44% of the page width.                     | Deviates > 2 mm                          |
 | **L03** | **Single column, double‑spaced** throughout                                                     | Multicolumn anywhere; line spacing < 1.5 |
 | **L04** | Manuscript length **20–35 pages** (≤ 40 for a review) — *exclude cover‑letter / response pages* | Outside limits                           |
 | **L05** | All manuscript pages numbered consecutively                                                     | Missing or non‑consecutive numbers       |

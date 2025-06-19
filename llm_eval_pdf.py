@@ -116,12 +116,14 @@ def main():
 
         # --- 4. Call the Gemini API with the prompt and files ---
         print("\nSending request to Gemini for evaluation...")
-        model = genai.GenerativeModel('models/gemini-2.5-pro')
+        model = genai.GenerativeModel('models/gemini-2.5-pro-preview-06-05')
         
         prompt = """
         I'm providing you with a PDF of a submitted manuscript to Pattern Recognition.
         I'm also providing an image for every page in the paper.
-        Please act as a Managing Editor and evaluate whether the paper meets the criteria in the uploaded "check_list.md."
+        Please evaluate whether the paper meets the criteria in the uploaded "check_list.md."
+        Return only a MARKDOWN formatted report with the results. It should mirror the structure of the checklist.
+        Make the last section a summary of the evaluation, including the overall compliance status.
         """
 
         # Combine the prompt and the uploaded files for the model
