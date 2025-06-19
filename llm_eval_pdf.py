@@ -3,6 +3,7 @@ import os
 import fitz  # PyMuPDF
 import google.generativeai as genai
 import time
+import pypandoc
 
 def configure_api():
     """Configures the Gemini API with the key from environment variables."""
@@ -74,14 +75,15 @@ def cleanup_images(image_paths):
             os.remove(image_path)
         except OSError as e:
             print(f"Error removing file {image_path}: {e}")
-    
+
     # Try to remove the directory if it's empty
-    temp_dir = os.path.dirname(image_paths[0])
-    try:
-        os.rmdir(temp_dir)
-        print(f"Removed temporary directory: {temp_dir}")
-    except OSError as e:
-        print(f"Could not remove directory {temp_dir}: {e}")
+    if image_paths: # Check if the list is not empty
+        temp_dir = os.path.dirname(image_paths[0])
+        try:
+            os.rmdir(temp_dir)
+            print(f"Removed temporary directory: {temp_dir}")
+        except OSError as e:
+            print(f"Could not remove directory {temp_dir}: {e}")
 
 
 def main():
@@ -102,7 +104,8 @@ def main():
     if not os.path.exists(checklist_path):
         print(f"Error: The required 'check_list.md' file was not found in the script's directory.")
         return
-
+    
+    image_paths = [] # Initialize here to ensure it exists in the finally block
     try:
         # --- 1. Configure API ---
         configure_api()
@@ -135,13 +138,39 @@ def main():
         print("\n--- Gemini Evaluation Result ---")
         print(response.text)
         print("------------------------------")
+        
+        # --- New feature: Convert response to HTML using pandoc ---
+        print("\nConverting response to a styled, standalone HTML file using pandoc...")
+        
+        # --- MODIFIED LINE: Use 'gfm' format and add 'standalone' extra argument ---
+        html_content = pypandoc.convert_text(
+            response.text,
+            'html',
+            format='gfm', # Use GitHub-Flavored Markdown for better list parsing
+            extra_args=['--standalone', '--metadata', 'title="Manuscript Evaluation Report"'] # Create a full document with default styles and a title
+        )
+
+        # --- New feature: Output HTML to a file ---
+        # Get the directory and base name of the input PDF
+        input_dir = os.path.dirname(os.path.abspath(pdf_path))
+        input_basename = os.path.splitext(os.path.basename(pdf_path))[0]
+        
+        # Define the output HTML file path
+        output_html_path = os.path.join(input_dir, f"{input_basename}.html")
+        
+        # Write the HTML content to the file
+        with open(output_html_path, "w", encoding="utf-8") as html_file:
+            html_file.write(html_content)
+            
+        print(f"Successfully saved HTML report to: {output_html_path}")
+
 
     except Exception as e:
         print(f"\nAn error occurred: {e}")
 
     finally:
         # --- 6. Clean up the generated images ---
-        if 'image_paths' in locals() and image_paths:
+        if image_paths:
             cleanup_images(image_paths)
 
 if __name__ == "__main__":
