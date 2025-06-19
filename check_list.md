@@ -28,6 +28,7 @@
 | **S05** | **CRediT author‑contribution statement** present                                                               | Missing                                |
 | **S06** | **Declaration of generative‑AI use** present if any AI tools mentioned                                         | AI usage evident but statement missing |
 | **S07** | **Keywords section** present with 1–7 English keywords                                                         | Missing or > 7 keywords                |
+| **S08** | **Relevancy** Provide a score between 0-100 on how relevant the paper is to the Pattern Recognition journal                                                         | Score < 30                |
 
 ### 2.4 References & citations
 
@@ -37,4 +38,4 @@
 | **R02** | ≥ 30 % of references from last **5 years**     | < 30 % ⇒ *Warn*                            |
 | **R03** | ≤ 20 % arXiv / non‑peer‑reviewed               | > 20 % ⇒ *Warn*                            |
 | **R04** | Avoid bulk citations (“…[1–6]”) w/o commentary | ≥ 2 bulk strings ⇒ *Warn*                  |
-| **R05** | Cite ≥ 3 recent papers on general topic of pattern recognition (PR, PAMI, CVPR, ICPR, etc)     | < 3 ⇒ *Warn*                               |
+| **R05** | Cite ≥ 3 recent (within previous year) papers on general topic of pattern recognition (PR, PAMI, CVPR, ICPR, etc)     | < 3 ⇒ *Warn*                               |
