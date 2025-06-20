@@ -21,7 +21,7 @@ def pdf_to_images(pdf_path, temp_dir="temp_images"):
         temp_dir (str): The directory to store the output images.
 
     Returns:
-        list: A list of paths to the generated image files.
+        list: A list of tuples, where each tuple contains the image path and the page size (width, height).
     """
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
@@ -35,7 +35,7 @@ def pdf_to_images(pdf_path, temp_dir="temp_images"):
         pix = page.get_pixmap(dpi=300)
         image_path = os.path.join(temp_dir, f"{page_num + 1:03d}.png")
         pix.save(image_path)
-        image_paths.append(image_path)
+        image_paths.append((image_path, (page.rect.width, page.rect.height))) # Append tuple of image path and page size
         print(f"Generated image: {image_path}")
 
     doc.close()
@@ -111,7 +111,9 @@ def main():
         configure_api()
 
         # --- 2. Create images from PDF ---
-        image_paths = pdf_to_images(pdf_path, temp_dir=temp_image_dir)
+        image_data = pdf_to_images(pdf_path, temp_dir=temp_image_dir)
+        image_paths = [item[0] for item in image_data]
+        page_sizes = [item[1] for item in image_data]
 
         # --- 3. Upload files to Gemini ---
         files_to_upload = [pdf_path] + image_paths + [checklist_path]
@@ -121,9 +123,10 @@ def main():
         print("\nSending request to Gemini for evaluation...")
         model = genai.GenerativeModel('models/gemini-2.5-pro-preview-06-05')
         
-        prompt = """
+        prompt = f"""
         I'm providing you with a PDF of a submitted manuscript to Pattern Recognition.
         I'm also providing an image for every page in the paper.
+        The page sizes are as follows: {page_sizes}
         Please evaluate whether the paper meets the criteria in the uploaded "check_list.md."
         Return only a MARKDOWN formatted report with the results. It should mirror the structure of the checklist.
         Make the last section a summary of the evaluation, including the overall compliance status.
