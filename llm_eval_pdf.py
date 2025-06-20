@@ -86,26 +86,9 @@ def cleanup_images(image_paths):
             print(f"Could not remove directory {temp_dir}: {e}")
 
 
-def main():
-    """Main function to run the manuscript evaluation process."""
-    parser = argparse.ArgumentParser(description="Evaluate a manuscript PDF using the Gemini API.")
-    parser.add_argument("pdf_path", help="The path to the target PDF manuscript.")
-    args = parser.parse_args()
-
-    # --- File Paths ---
-    pdf_path = args.pdf_path
-    checklist_path = "check_list.md"
-    temp_image_dir = "temp_manuscript_images"
-
-    if not os.path.exists(pdf_path):
-        print(f"Error: The file '{pdf_path}' was not found.")
-        return
-
-    if not os.path.exists(checklist_path):
-        print(f"Error: The required 'check_list.md' file was not found in the script's directory.")
-        return
-    
-    image_paths = [] # Initialize here to ensure it exists in the finally block
+def process_pdf(pdf_path, checklist_path, temp_image_dir):
+    """Processes a single PDF file."""
+    image_paths = []  # Initialize here to ensure it exists in the finally block
     try:
         # --- 1. Configure API ---
         configure_api()
@@ -122,7 +105,7 @@ def main():
         # --- 4. Call the Gemini API with the prompt and files ---
         print("\nSending request to Gemini for evaluation...")
         model = genai.GenerativeModel('models/gemini-2.5-pro-preview-06-05')
-        
+
         prompt = f"""
         I'm providing you with a PDF of a submitted manuscript to Pattern Recognition.
         I'm also providing an image for every page in the paper.
@@ -134,39 +117,38 @@ def main():
 
         # Combine the prompt and the uploaded files for the model
         request_content = [prompt] + uploaded_files
-        
+
         response = model.generate_content(request_content)
 
         # --- 5. Print the response ---
         print("\n--- Gemini Evaluation Result ---")
         print(response.text)
         print("------------------------------")
-        
+
         # --- New feature: Convert response to HTML using pandoc ---
         print("\nConverting response to a styled, standalone HTML file using pandoc...")
-        
+
         # --- MODIFIED LINE: Use 'gfm' format and add 'standalone' extra argument ---
         html_content = pypandoc.convert_text(
             response.text,
             'html',
-            format='gfm', # Use GitHub-Flavored Markdown for better list parsing
-            extra_args=['--standalone', '--metadata', 'title="Manuscript Evaluation Report"'] # Create a full document with default styles and a title
+            format='gfm',  # Use GitHub-Flavored Markdown for better list parsing
+            extra_args=['--standalone', '--metadata', 'title="Manuscript Evaluation Report"']  # Create a full document with default styles and a title
         )
 
         # --- New feature: Output HTML to a file ---
         # Get the directory and base name of the input PDF
         input_dir = os.path.dirname(os.path.abspath(pdf_path))
         input_basename = os.path.splitext(os.path.basename(pdf_path))[0]
-        
+
         # Define the output HTML file path
         output_html_path = os.path.join(input_dir, f"{input_basename}.html")
-        
+
         # Write the HTML content to the file
         with open(output_html_path, "w", encoding="utf-8") as html_file:
             html_file.write(html_content)
-            
-        print(f"Successfully saved HTML report to: {output_html_path}")
 
+        print(f"Successfully saved HTML report to: {output_html_path}")
 
     except Exception as e:
         print(f"\nAn error occurred: {e}")
@@ -175,6 +157,37 @@ def main():
         # --- 6. Clean up the generated images ---
         if image_paths:
             cleanup_images(image_paths)
+
+
+def main():
+    """Main function to run the manuscript evaluation process."""
+    parser = argparse.ArgumentParser(description="Evaluate a manuscript PDF using the Gemini API.")
+    parser.add_argument("pdf_path", help="The path to the target PDF manuscript or a directory containing PDFs.")
+    args = parser.parse_args()
+
+    # --- File Paths ---
+    pdf_path = args.pdf_path
+    checklist_path = "check_list.md"
+    temp_image_dir = "temp_manuscript_images"
+
+    if not os.path.exists(checklist_path):
+        print(f"Error: The required 'check_list.md' file was not found in the script's directory.")
+        return
+
+    if os.path.isfile(pdf_path):
+        # Process a single PDF file
+        process_pdf(pdf_path, checklist_path, temp_image_dir)
+    elif os.path.isdir(pdf_path):
+        # Process all PDF files in the directory
+        for filename in os.listdir(pdf_path):
+            if filename.lower().endswith(".pdf"):
+                pdf_file_path = os.path.join(pdf_path, filename)
+                print(f"Processing PDF file: {pdf_file_path}")
+                process_pdf(pdf_file_path, checklist_path, temp_image_dir)
+    else:
+        print(f"Error: The path '{pdf_path}' is neither a valid file nor a directory.")
+        return
+
 
 if __name__ == "__main__":
     main()
