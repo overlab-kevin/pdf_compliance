@@ -5,8 +5,8 @@
 | **L01** | Paper size **Letter 8.5 × 11 in**                                                               | Any other size                           |
 | **L02** | Margins exactly **Top 4.3 cm, Bottom 4.3 cm, Left 4.8 cm, Right 4.8 cm**. Note these are very large, approximately 44% of the page width.                     | Deviates > 2 mm                          |
 | **L03** | **Single column, double‑spaced** throughout                                                     | Multicolumn anywhere; line spacing < 1.5 |
-| **L04** | Manuscript length **20–35 pages** (≤ 40 for a review) — *exclude cover‑letter / response pages* | Outside limits                           |
-| **L05** | All manuscript pages numbered consecutively                                                     | Missing or non‑consecutive numbers       |
+| **L04** | Manuscript length **< 40 pages** — *exclude cover‑letter / response pages* | Outside limits                           |
+| **L05** | All manuscript pages numbered consecutively (OK if first page not numbered)                                                     | Missing or non‑consecutive numbers       |
 | **L06** | Footnote baseline **2.6 cm from bottom**                                                        | Footnotes elsewhere                      |
 
 ### 2.2 Typography
@@ -24,9 +24,9 @@
 | **S01** | **Title** ≤ 15 words, grammatical, no unexplained abbreviations                                                | > 15 words or grammar errors           |
 | **S02** | **Abstract** ≤ 250 words                                                                                       | Exceeds                                |
 | **S03** | **Conclusions** present, distinct from abstract, discuss strengths, weaknesses, benefit to field & future work | Missing or duplicate of abstract       |
-| **S04** | **Highlights** file present (3–5 bullets, ≤ 85 chars each)                                                     | Missing                                |
+| **S04** | **Highlights** page present (3–5 bullets, ≤ 85 chars each)                                                     | Missing                                |
 | **S05** | **CRediT author‑contribution statement** present                                                               | Missing                                |
-| **S06** | **Declaration of generative‑AI use** present if any AI tools mentioned                                         | AI usage evident but statement missing |
+| **S06** | **Declaration of generative‑AI use** present if any AI tools mentioned for preparing the manuscript                                         | AI usage evident but statement missing |
 | **S07** | **Keywords section** present with 1–7 English keywords                                                         | Missing or > 7 keywords                |
 | **S08** | **Relevancy** Provide a score between 0-100 on how relevant the paper is to the Pattern Recognition journal                                                         | Score < 30                |
 

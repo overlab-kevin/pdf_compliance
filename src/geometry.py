@@ -130,3 +130,14 @@ def page_metrics(pdf_path: str | Path) -> Dict[str, float]:
         # stash per‑page dict for debugging
         "_pages": per_page,
     }
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        print("Usage: python geometry.py <pdf_path>")
+        sys.exit(1)
+    
+    pdf_path = sys.argv[1]
+    metrics = page_metrics(pdf_path)
+    for key, value in metrics.items():
+        print(f"{key}: {value}")
