@@ -2,15 +2,28 @@ import argparse
 import os
 import fitz  # PyMuPDF
 import google.generativeai as genai
+import openai
+import base64
 import time
 import pypandoc
 
-def configure_api():
+# --- API Configuration ---
+
+def configure_gemini_api():
     """Configures the Gemini API with the key from environment variables."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set. Please set it to your API key.")
     genai.configure(api_key=api_key)
+
+def configure_openai_api():
+    """Configures the OpenAI API with the key from environment variables."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable not set. Please set it to your API key.")
+    openai.api_key = api_key
+
+# --- File and Image Handling ---
 
 def pdf_to_images(pdf_path, temp_dir="temp_images"):
     """
@@ -85,66 +98,127 @@ def cleanup_images(image_paths):
         except OSError as e:
             print(f"Could not remove directory {temp_dir}: {e}")
 
+def encode_image(image_path):
+  """Encodes an image file to a base64 string."""
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
 
-def process_pdf(pdf_path, checklist_path, temp_image_dir):
+# --- LLM API Calls ---
+
+def call_gemini_api(pdf_path, image_paths, page_sizes, checklist_path, model_name):
+    """Calls the Gemini API for evaluation."""
+    files_to_upload = [pdf_path] + image_paths + [checklist_path]
+    uploaded_files = upload_files_to_gemini(files_to_upload)
+
+    print("\nSending request to Gemini for evaluation...")
+    model = genai.GenerativeModel(model_name,
+                                     generation_config={"response_mime_type": "text/plain"},
+                                     )
+
+    prompt = f"""
+    I'm providing you with a PDF of a submitted manuscript to Pattern Recognition.
+    I'm also providing an image for every page in the paper.
+    The page sizes are as follows: {page_sizes}
+    Please evaluate whether the paper meets the criteria in the uploaded "check_list.md."
+    Return only a MARKDOWN formatted report with the results. It should mirror the structure of the checklist.
+    Make the last section a summary of the evaluation, including the overall compliance status.
+    """
+
+    request_content = [prompt] + uploaded_files
+    response = model.generate_content(request_content)
+    return response.text
+
+def call_openai_api(image_paths, page_sizes, checklist_content, model_name):
+    """Calls the OpenAI API for evaluation."""
+    print(f"\nSending request to OpenAI model {model_name} for evaluation...")
+
+    client = openai.OpenAI()
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"""
+                    I'm providing you with images of a submitted manuscript to Pattern Recognition.
+                    The page sizes are as follows: {page_sizes}
+                    Please evaluate whether the paper meets the criteria in the checklist below.
+                    Return only a MARKDOWN formatted report with the results. It should mirror the structure of the checklist.
+                    Make the last section a summary of the evaluation, including the overall compliance status.
+
+                    Checklist:
+                    ---
+                    {checklist_content}
+                    """
+                }
+            ]
+        }
+    ]
+
+    for image_path in image_paths:
+        base64_image = encode_image(image_path)
+        messages[0]["content"].append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}"
+            }
+        })
+
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        max_tokens=4000
+    )
+    return response.choices[0].message.content
+
+# --- Main Processing Logic ---
+
+def process_pdf(pdf_path, checklist_path, temp_image_dir, model_name):
     """Processes a single PDF file."""
     image_paths = []  # Initialize here to ensure it exists in the finally block
     try:
-        # --- 1. Configure API ---
-        configure_api()
-
-        # --- 2. Create images from PDF ---
+        # --- 1. Create images from PDF ---
         image_data = pdf_to_images(pdf_path, temp_dir=temp_image_dir)
         image_paths = [item[0] for item in image_data]
         page_sizes = [item[1] for item in image_data]
 
-        # --- 3. Upload files to Gemini ---
-        files_to_upload = [pdf_path] + image_paths + [checklist_path]
-        uploaded_files = upload_files_to_gemini(files_to_upload)
+        # --- 2. Read checklist content ---
+        with open(checklist_path, 'r', encoding='utf-8') as f:
+            checklist_content = f.read()
 
-        # --- 4. Call the Gemini API with the prompt and files ---
-        print("\nSending request to Gemini for evaluation...")
-        model = genai.GenerativeModel('models/gemini-2.5-pro-preview-06-05')
+        # --- 3. Call the appropriate LLM API ---
+        if "gemini" in model_name.lower():
+            configure_gemini_api()
+            response_text = call_gemini_api(pdf_path, image_paths, page_sizes, checklist_path, model_name)
+        elif "gpt" in model_name.lower() or model_name == "o3":
+            if model_name == "o3":
+                model_name = "gpt-4o"
+            configure_openai_api()
+            response_text = call_openai_api(image_paths, page_sizes, checklist_content, model_name)
+        else:
+            raise ValueError(f"Unsupported model: {model_name}. Please use a model containing 'gemini' or 'gpt', or 'o3'.")
 
-        prompt = f"""
-        I'm providing you with a PDF of a submitted manuscript to Pattern Recognition.
-        I'm also providing an image for every page in the paper.
-        The page sizes are as follows: {page_sizes}
-        Please evaluate whether the paper meets the criteria in the uploaded "check_list.md."
-        Return only a MARKDOWN formatted report with the results. It should mirror the structure of the checklist.
-        Make the last section a summary of the evaluation, including the overall compliance status.
-        """
-
-        # Combine the prompt and the uploaded files for the model
-        request_content = [prompt] + uploaded_files
-
-        response = model.generate_content(request_content)
-
-        # --- 5. Print the response ---
-        print("\n--- Gemini Evaluation Result ---")
-        print(response.text)
+        # --- 4. Print the response ---
+        print("\n--- Evaluation Result ---")
+        print(response_text)
         print("------------------------------")
 
-        # --- New feature: Convert response to HTML using pandoc ---
+        # --- 5. Convert response to HTML using pandoc ---
         print("\nConverting response to a styled, standalone HTML file using pandoc...")
 
-        # --- MODIFIED LINE: Use 'gfm' format and add 'standalone' extra argument ---
         html_content = pypandoc.convert_text(
-            response.text,
+            response_text,
             'html',
-            format='gfm',  # Use GitHub-Flavored Markdown for better list parsing
-            extra_args=['--standalone', '--metadata', 'title="Manuscript Evaluation Report"']  # Create a full document with default styles and a title
+            format='gfm',
+            extra_args=['--standalone', '--metadata', 'title="Manuscript Evaluation Report"']
         )
 
-        # --- New feature: Output HTML to a file ---
-        # Get the directory and base name of the input PDF
+        # --- 6. Output HTML to a file ---
         input_dir = os.path.dirname(os.path.abspath(pdf_path))
         input_basename = os.path.splitext(os.path.basename(pdf_path))[0]
-
-        # Define the output HTML file path
         output_html_path = os.path.join(input_dir, f"{input_basename}.html")
 
-        # Write the HTML content to the file
         with open(output_html_path, "w", encoding="utf-8") as html_file:
             html_file.write(html_content)
 
@@ -154,19 +228,21 @@ def process_pdf(pdf_path, checklist_path, temp_image_dir):
         print(f"\nAn error occurred: {e}")
 
     finally:
-        # --- 6. Clean up the generated images ---
+        # --- 7. Clean up the generated images ---
         if image_paths:
             cleanup_images(image_paths)
 
 
 def main():
     """Main function to run the manuscript evaluation process."""
-    parser = argparse.ArgumentParser(description="Evaluate a manuscript PDF using the Gemini API.")
+    parser = argparse.ArgumentParser(description="Evaluate a manuscript PDF using an LLM.")
     parser.add_argument("pdf_path", help="The path to the target PDF manuscript or a directory containing PDFs.")
+    parser.add_argument("--model", default="models/gemini-1.5-pro-preview-06-05", help="The model to use for evaluation (e.g., 'models/gemini-1.5-pro-preview-06-05', 'gpt-4o', 'o3').")
     args = parser.parse_args()
 
     # --- File Paths ---
     pdf_path = args.pdf_path
+    model_name = args.model
     checklist_path = "check_list.md"
     temp_image_dir = "temp_manuscript_images"
 
@@ -176,14 +252,14 @@ def main():
 
     if os.path.isfile(pdf_path):
         # Process a single PDF file
-        process_pdf(pdf_path, checklist_path, temp_image_dir)
+        process_pdf(pdf_path, checklist_path, temp_image_dir, model_name)
     elif os.path.isdir(pdf_path):
         # Process all PDF files in the directory
         for filename in os.listdir(pdf_path):
             if filename.lower().endswith(".pdf"):
                 pdf_file_path = os.path.join(pdf_path, filename)
                 print(f"Processing PDF file: {pdf_file_path}")
-                process_pdf(pdf_file_path, checklist_path, temp_image_dir)
+                process_pdf(pdf_file_path, checklist_path, temp_image_dir, model_name)
     else:
         print(f"Error: The path '{pdf_path}' is neither a valid file nor a directory.")
         return
